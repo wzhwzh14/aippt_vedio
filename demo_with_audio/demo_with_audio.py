@@ -201,24 +201,28 @@ def ppt_to_video(ppt_path, output_path, durations=None, fps=30, transition_durat
     for i in range(num_slides):
         current_img_path = os.path.join(image_dir, image_files[i])
         slide_duration = durations[i] if durations and i < len(durations) else 5
-        current_clip = ImageClip(current_img_path).with_duration(slide_duration)
-        clips.append(current_clip)
         
-        if i < num_slides - 1:
-            next_img_path = os.path.join(image_dir, image_files[i+1])
-            transition_clip = create_transition_clip(
-                current_img_path, next_img_path,
-                duration=transition_duration, fps=fps
-            )
-        current_clip = ImageClip(current_img_path).with_duration(slide_duration)
-
+        # 创建当前幻灯片并设置音频（如果有）
+        current_clip = ImageClip(current_img_path)
+        
         audio_path = os.path.join(audio_dir, f"slide_{i:03d}.mp3")
         if os.path.exists(audio_path):
             audio_clip = AudioFileClip(audio_path)
             slide_duration = audio_clip.duration  # 使用音频实际长度
             current_clip = current_clip.with_duration(slide_duration).with_audio(audio_clip)
+        else:
+            current_clip = current_clip.with_duration(slide_duration)
+        
         clips.append(current_clip)
-    
+        
+        # 只在有下一张幻灯片时添加过渡效果
+        if i < num_slides - 1 and transition_duration > 0:
+            next_img_path = os.path.join(image_dir, image_files[i+1])
+            transition_clip = create_transition_clip(
+                current_img_path, next_img_path,
+                duration=transition_duration, fps=fps
+            )
+            clips.append(transition_clip)
     
     print("正在合并视频片段...")
     final_clip = concatenate_videoclips(clips, method="compose")
